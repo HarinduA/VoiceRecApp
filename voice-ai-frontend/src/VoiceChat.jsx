@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const userAvatar = '';
+const userAvatar = ''; // Add user avatar URL if any
 const botAvatar = 'https://cdn-icons-png.flaticon.com/512/4712/4712027.png';
 
 function formatTime(date) {
@@ -33,7 +33,8 @@ export default function VoiceChat() {
     setMessages((msgs) => [...msgs, userMsg]);
 
     try {
-      const response = await fetch(`http://localhost:3000/search?q=${encodeURIComponent(userQuery)}`);
+      // Change backend URL here
+      const response = await fetch(`https://voicerecbackend-production.up.railway.app/search?q=${encodeURIComponent(userQuery)}`);
       const result = await response.json();
 
       if (!response.ok || !result.items || result.items.length === 0) {
@@ -81,12 +82,9 @@ export default function VoiceChat() {
         if (event.results[i].isFinal) {
           fullTranscript += transcript + ' ';
 
-          // Check if "over" is anywhere in the final transcript segment
           if (transcript.toLowerCase().includes('over')) {
-            // Remove the word "over" from full transcript
             fullTranscript = fullTranscript.replace(/over/gi, '').trim();
-
-            recognition.stop(); // Stop listening
+            recognition.stop();
             break;
           }
         }

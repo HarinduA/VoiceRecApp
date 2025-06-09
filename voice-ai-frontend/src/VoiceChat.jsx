@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { WebVoiceSDK } from '@vapi-ai/web';  // Import SDK directly
 
-const userAvatar = '';
+const userAvatar = 'https://cdn-icons-png.flaticon.com/512/147/147144.png'; // example user icon
 const botAvatar = 'https://cdn-icons-png.flaticon.com/512/4712/4712027.png';
 const BACKEND_URL = 'https://voicerecbackend-production.up.railway.app';
 
@@ -23,38 +24,21 @@ export default function VoiceChat() {
   }, [messages]);
 
   useEffect(() => {
-    const loadVapiScript = () => {
-      return new Promise((resolve, reject) => {
-        if (window.vapi) return resolve(); // Already loaded
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest/dist/web.js';
-        script.async = true;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.body.appendChild(script);
-      });
-    };
-
-    loadVapiScript().then(() => {
-      const vapi = new window.vapi.WebVoiceSDK({
-        apiKey: 'd8291446-ef94-430e-9fca-d97ea0b656c4',
-      });
-
-      vapiRef.current = vapi;
-
-      vapi.on('speech', (msg) => {
-        if (!msg.transcript || !msg.isFinal) return;
-        handleUserQuery(msg.transcript);
-      });
-
-      vapi.on('end', () => {
-        setListening(false);
-      });
-
-      console.log('✅ Vapi initialized');
-    }).catch(err => {
-      console.error('❌ Failed to load Vapi:', err);
+    const vapi = new WebVoiceSDK({
+      apiKey: 'd8291446-ef94-430e-9fca-d97ea0b656c4',
     });
+    vapiRef.current = vapi;
+
+    vapi.on('speech', (msg) => {
+      if (!msg.transcript || !msg.isFinal) return;
+      handleUserQuery(msg.transcript);
+    });
+
+    vapi.on('end', () => {
+      setListening(false);
+    });
+
+    console.log('✅ Vapi initialized');
   }, []);
 
   function speakText(text) {
@@ -71,14 +55,15 @@ export default function VoiceChat() {
 
     try {
       const response = await fetch(`${BACKEND_URL}/search?q=${encodeURIComponent(userQuery)}`);
+      if (!response.ok) throw new Error('No items found');
       const result = await response.json();
 
-      if (!response.ok || !result.items || result.items.length === 0) {
+      if (!result.items || result.items.length === 0) {
         throw new Error('No items found');
       }
 
       const itemNames = result.items.map(i => capitalize(i.name)).join(', ');
-      const itemDetails = result.items.map((item) =>
+      const itemDetails = result.items.map(item =>
         `• Code: ${item.code || 'N/A'}\n  Name: ${capitalize(item.name) || 'N/A'}\n  Price: $${item.price || 'N/A'}`
       ).join('\n\n');
 
@@ -104,7 +89,7 @@ export default function VoiceChat() {
   };
 
   return (
-    <div style={{ backgroundColor: '#ffffff', height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ backgroundColor: '#fff', height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ backgroundColor: '#1f1f1f', color: 'white', height: '85vh', width: '100%', maxWidth: 480, borderRadius: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 8px 24px rgba(0,0,0,0.2)', position: 'relative', padding: '16px 0' }}>
         <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: '600', marginBottom: 8 }}>
           AI Assistant

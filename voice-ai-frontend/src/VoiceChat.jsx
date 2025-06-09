@@ -33,7 +33,7 @@ export default function VoiceChat() {
     setMessages((msgs) => [...msgs, userMsg]);
 
     try {
-      // Change backend URL here
+      // Replace this URL with your backend URL if different
       const response = await fetch(`https://voicerecbackend-production.up.railway.app/search?q=${encodeURIComponent(userQuery)}`);
       const result = await response.json();
 
@@ -70,24 +70,20 @@ export default function VoiceChat() {
 
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.lang = 'en-US';
-    recognition.interimResults = true;
-    recognition.continuous = true;
+    recognition.interimResults = false;  // Get only final results
+    recognition.continuous = false;     // Stop automatically after speech ends
 
     let fullTranscript = '';
 
     recognition.onresult = (event) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript.trim();
+      const transcript = event.results[0][0].transcript.trim().toLowerCase();
+      console.log('Speech recognized:', transcript);
 
-        if (event.results[i].isFinal) {
-          fullTranscript += transcript + ' ';
-
-          if (transcript.toLowerCase().includes('over')) {
-            fullTranscript = fullTranscript.replace(/over/gi, '').trim();
-            recognition.stop();
-            break;
-          }
-        }
+      if (transcript.includes('over')) {
+        fullTranscript = transcript.replace(/over/gi, '').trim();
+        recognition.stop();
+      } else {
+        fullTranscript = transcript;
       }
     };
 
@@ -100,7 +96,10 @@ export default function VoiceChat() {
       setListening(false);
       const trimmedTranscript = fullTranscript.trim();
       if (trimmedTranscript.length > 0) {
+        console.log('Processing query:', trimmedTranscript);
         processQuery(trimmedTranscript);
+      } else {
+        console.log('No valid transcript to process');
       }
     };
 

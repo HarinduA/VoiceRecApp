@@ -4,7 +4,7 @@ const userAvatar = ''; // Optional user avatar
 const botAvatar = 'https://cdn-icons-png.flaticon.com/512/4712/4712027.png';
 
 // Your Vapi credentials
-const VAPI_API_KEY = 'd8291446-ef94-430e-9fca-d97ea0b656c4';
+const VAPI_API_KEY = '9fa9d353-27d1-4fc4-b636-7d121ab7ff53';
 const AGENT_ID = 'd17442ad-a6d9-4628-9dba-49ff9ee0e43b';
 
 function formatTime(date) {

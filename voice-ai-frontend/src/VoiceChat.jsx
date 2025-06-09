@@ -23,17 +23,26 @@ export default function VoiceChat() {
   }, [messages]);
 
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest/dist/web.js';
-    script.async = true;
-    script.onload = () => {
+    const loadVapiScript = () => {
+      return new Promise((resolve, reject) => {
+        if (window.vapi) return resolve(); // Already loaded
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest/dist/web.js';
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.body.appendChild(script);
+      });
+    };
+
+    loadVapiScript().then(() => {
       const vapi = new window.vapi.WebVoiceSDK({
         apiKey: 'd8291446-ef94-430e-9fca-d97ea0b656c4',
       });
 
       vapiRef.current = vapi;
 
-      vapi.on('speech', async (msg) => {
+      vapi.on('speech', (msg) => {
         if (!msg.transcript || !msg.isFinal) return;
         handleUserQuery(msg.transcript);
       });
@@ -41,8 +50,11 @@ export default function VoiceChat() {
       vapi.on('end', () => {
         setListening(false);
       });
-    };
-    document.body.appendChild(script);
+
+      console.log('✅ Vapi initialized');
+    }).catch(err => {
+      console.error('❌ Failed to load Vapi:', err);
+    });
   }, []);
 
   function speakText(text) {

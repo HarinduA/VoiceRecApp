@@ -28,7 +28,7 @@ export default function VoiceChat() {
   // Load VAPI SDK script & init on mount
   useEffect(() => {
     const script = document.createElement('script');
-    script.src = 'https://cdn.vapi.com/vapi.min.js'; // Replace with actual VAPI SDK URL if different
+    script.src = 'https://cdn.vapi.ai/sdk/vapi.js';
     script.async = true;
 
     script.onload = () => {

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const userAvatar = ''; // Optional user avatar
+const userAvatar = ''; // Optional user avatar URL
 const botAvatar = 'https://cdn-icons-png.flaticon.com/512/4712/4712027.png';
 
-// Your Vapi credentials
+// Your VAPI credentials
 const VAPI_API_KEY = '9fa9d353-27d1-4fc4-b636-7d121ab7ff53';
 const AGENT_ID = 'd17442ad-a6d9-4628-9dba-49ff9ee0e43b';
 
@@ -20,16 +20,43 @@ export default function VoiceChat() {
   const [listening, setListening] = useState(false);
   const chatEndRef = useRef(null);
 
+  // Scroll chat to bottom on new messages
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Load VAPI SDK script & init on mount
   useEffect(() => {
-    if (window.vapi) {
-      window.vapi.init({ apiKey: VAPI_API_KEY });
-    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.vapi.com/vapi.min.js'; // Replace with actual VAPI SDK URL if different
+    script.async = true;
+
+    script.onload = () => {
+      if (window.vapi) {
+        window.vapi.init({ apiKey: VAPI_API_KEY });
+
+        // Register event handlers once
+        window.vapi.on('transcript', onTranscript);
+        window.vapi.on('agentResponse', onAgentResponse);
+        window.vapi.on('end', onEnd);
+        window.vapi.on('error', onError);
+      }
+    };
+
+    document.body.appendChild(script);
+
+    // Cleanup event listeners on unmount
+    return () => {
+      if (window.vapi) {
+        window.vapi.off('transcript', onTranscript);
+        window.vapi.off('agentResponse', onAgentResponse);
+        window.vapi.off('end', onEnd);
+        window.vapi.off('error', onError);
+      }
+    };
   }, []);
 
+  // Speak text using Web Speech API
   function speakText(text) {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
@@ -38,6 +65,36 @@ export default function VoiceChat() {
     }
   }
 
+  // Handle transcript event from VAPI
+  const onTranscript = (data) => {
+    const query = data.transcript.trim();
+    if (query) {
+      processQuery(query);
+    }
+  };
+
+  // Handle agent response event from VAPI
+  const onAgentResponse = (data) => {
+    const response = data.text;
+    if (response) {
+      const botMsg = { from: 'bot', text: response, time: formatTime(new Date()) };
+      setMessages((msgs) => [...msgs, botMsg]);
+      speakText(response);
+    }
+  };
+
+  // Handle conversation end
+  const onEnd = () => {
+    setListening(false);
+  };
+
+  // Handle errors
+  const onError = (error) => {
+    console.error('Vapi error:', error);
+    setListening(false);
+  };
+
+  // Call your backend search API and process response
   const processQuery = async (userQuery) => {
     const userMsg = { from: 'user', text: userQuery, time: formatTime(new Date()) };
     setMessages((msgs) => [...msgs, userMsg]);
@@ -71,38 +128,12 @@ export default function VoiceChat() {
     }
   };
 
+  // Start voice conversation
   const toggleListening = () => {
     if (!window.vapi || listening) return;
 
     setListening(true);
-
     window.vapi.startConversation({ agentId: AGENT_ID });
-
-    window.vapi.on('transcript', (data) => {
-      const query = data.transcript.trim().toLowerCase();
-      if (query) {
-        console.log('Transcript:', query);
-        processQuery(query);
-      }
-    });
-
-    window.vapi.on('agentResponse', (data) => {
-      const response = data.text;
-      if (response) {
-        const botMsg = { from: 'bot', text: response, time: formatTime(new Date()) };
-        setMessages((msgs) => [...msgs, botMsg]);
-        speakText(response);
-      }
-    });
-
-    window.vapi.on('end', () => {
-      setListening(false);
-    });
-
-    window.vapi.on('error', (error) => {
-      console.error('Vapi error:', error);
-      setListening(false);
-    });
   };
 
   return (

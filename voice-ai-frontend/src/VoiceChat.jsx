@@ -4,7 +4,7 @@ import Vapi from '@vapi-ai/web'; // ← new import
 const userAvatar = ''; // Optional user avatar URL
 const botAvatar = 'https://cdn-icons-png.flaticon.com/512/4712/4712027.png';
 
-const VAPI_API_KEY = '9fa9d353-27d1-4fc4-b636-7d121ab7ff53';
+const VAPI_API_KEY = '34f5fbca-0559-4d31-95a8-4f06ed995b57';
 const AGENT_ID = 'd17442ad-a6d9-4628-9dba-49ff9ee0e43b';
 
 const vapi = new Vapi({ apiKey: VAPI_API_KEY }); // ← initialize once

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 const userAvatar = '';
 const botAvatar = 'https://cdn-icons-png.flaticon.com/512/4712/4712027.png';
-const BACKEND_URL = 'https://voicerecbackend-production.up.railway.app'; // your backend
+const BACKEND_URL = 'https://voicerecbackend-production.up.railway.app';
 
 function formatTime(date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -23,7 +23,10 @@ export default function VoiceChat() {
   }, [messages]);
 
   useEffect(() => {
-    if (window.vapi) {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest/dist/web.js';
+    script.async = true;
+    script.onload = () => {
       const vapi = new window.vapi.WebVoiceSDK({
         apiKey: 'd8291446-ef94-430e-9fca-d97ea0b656c4',
       });
@@ -32,15 +35,14 @@ export default function VoiceChat() {
 
       vapi.on('speech', async (msg) => {
         if (!msg.transcript || !msg.isFinal) return;
-
-        const query = msg.transcript;
-        handleUserQuery(query);
+        handleUserQuery(msg.transcript);
       });
 
       vapi.on('end', () => {
         setListening(false);
       });
-    }
+    };
+    document.body.appendChild(script);
   }, []);
 
   function speakText(text) {
@@ -79,7 +81,7 @@ export default function VoiceChat() {
         time: formatTime(new Date())
       };
       setMessages((msgs) => [...msgs, botMsg]);
-      speakText("Sorry, I couldn't find any of those items.");
+      speakText(botMsg.text);
     }
   }
 

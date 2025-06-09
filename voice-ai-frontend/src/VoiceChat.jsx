@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const userAvatar = ''; // Add user avatar URL if any
+const userAvatar = ''; // Optional user avatar
 const botAvatar = 'https://cdn-icons-png.flaticon.com/512/4712/4712027.png';
+
+// Your Vapi credentials
+const VAPI_API_KEY = 'd8291446-ef94-430e-9fca-d97ea0b656c4';
+const AGENT_ID = 'd17442ad-a6d9-4628-9dba-49ff9ee0e43b';
 
 function formatTime(date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -20,6 +24,12 @@ export default function VoiceChat() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (window.vapi) {
+      window.vapi.init({ apiKey: VAPI_API_KEY });
+    }
+  }, []);
+
   function speakText(text) {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
@@ -33,7 +43,6 @@ export default function VoiceChat() {
     setMessages((msgs) => [...msgs, userMsg]);
 
     try {
-      // Replace this URL with your backend URL if different
       const response = await fetch(`https://voicerecbackend-production.up.railway.app/search?q=${encodeURIComponent(userQuery)}`);
       const result = await response.json();
 
@@ -50,7 +59,6 @@ export default function VoiceChat() {
 
       const botMsg = { from: 'bot', text: fullBotMessage, time: formatTime(new Date()) };
       setMessages((msgs) => [...msgs, botMsg]);
-
       speakText(fullBotMessage);
     } catch {
       const botMsg = {
@@ -59,51 +67,42 @@ export default function VoiceChat() {
         time: formatTime(new Date())
       };
       setMessages((msgs) => [...msgs, botMsg]);
-
-      speakText("Sorry, I couldn't find any of those items.");
+      speakText(botMsg.text);
     }
   };
 
   const toggleListening = () => {
-    if (listening) return;
+    if (!window.vapi || listening) return;
+
     setListening(true);
 
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;  // Get only final results
-    recognition.continuous = false;     // Stop automatically after speech ends
+    window.vapi.startConversation({ agentId: AGENT_ID });
 
-    let fullTranscript = '';
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript.trim().toLowerCase();
-      console.log('Speech recognized:', transcript);
-
-      if (transcript.includes('over')) {
-        fullTranscript = transcript.replace(/over/gi, '').trim();
-        recognition.stop();
-      } else {
-        fullTranscript = transcript;
+    window.vapi.on('transcript', (data) => {
+      const query = data.transcript.trim().toLowerCase();
+      if (query) {
+        console.log('Transcript:', query);
+        processQuery(query);
       }
-    };
+    });
 
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      setListening(false);
-    };
-
-    recognition.onend = () => {
-      setListening(false);
-      const trimmedTranscript = fullTranscript.trim();
-      if (trimmedTranscript.length > 0) {
-        console.log('Processing query:', trimmedTranscript);
-        processQuery(trimmedTranscript);
-      } else {
-        console.log('No valid transcript to process');
+    window.vapi.on('agentResponse', (data) => {
+      const response = data.text;
+      if (response) {
+        const botMsg = { from: 'bot', text: response, time: formatTime(new Date()) };
+        setMessages((msgs) => [...msgs, botMsg]);
+        speakText(response);
       }
-    };
+    });
 
-    recognition.start();
+    window.vapi.on('end', () => {
+      setListening(false);
+    });
+
+    window.vapi.on('error', (error) => {
+      console.error('Vapi error:', error);
+      setListening(false);
+    });
   };
 
   return (

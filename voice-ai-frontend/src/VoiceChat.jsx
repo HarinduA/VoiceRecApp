@@ -25,22 +25,50 @@ export default function VoiceChat() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Function to initialize VAPI and set up event listeners
+  const initializeVapi = () => {
+    if (window.vapi) {
+      window.vapi.init({ apiKey: VAPI_API_KEY });
+
+      // Register event handlers once
+      window.vapi.on('transcript', onTranscript);
+      window.vapi.on('agentResponse', onAgentResponse);
+      window.vapi.on('end', onEnd);
+      window.vapi.on('error', onError);
+      console.log("VAPI SDK initialized and event listeners registered.");
+    } else {
+      console.error("VAPI object not found, cannot initialize.");
+    }
+  };
+
   // Load VAPI SDK script & init on mount
   useEffect(() => {
+    // Check if VAPI SDK is already loaded
+    if (window.vapi) {
+      console.log("VAPI SDK already loaded, initializing.");
+      initializeVapi();
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = 'https://cdn.vapi.ai/sdk/vapi.js';
     script.async = true;
 
     script.onload = () => {
-      if (window.vapi) {
-        window.vapi.init({ apiKey: VAPI_API_KEY });
+      // Small delay to ensure VAPI is fully ready in the global scope
+      setTimeout(() => {
+        if (window.vapi) {
+          console.log("VAPI SDK script loaded. Attempting initialization...");
+          initializeVapi();
+        } else {
+          console.error("VAPI SDK failed to load or initialize after script onload. window.vapi is undefined.");
+        }
+      }, 100); // Give it a short delay
+    };
 
-        // Register event handlers once
-        window.vapi.on('transcript', onTranscript);
-        window.vapi.on('agentResponse', onAgentResponse);
-        window.vapi.on('end', onEnd);
-        window.vapi.on('error', onError);
-      }
+    script.onerror = (e) => {
+      console.error("Failed to load VAPI SDK script:", e);
+      // You might want to display a user-friendly error message here
     };
 
     document.body.appendChild(script);
@@ -52,9 +80,10 @@ export default function VoiceChat() {
         window.vapi.off('agentResponse', onAgentResponse);
         window.vapi.off('end', onEnd);
         window.vapi.off('error', onError);
+        console.log("VAPI event listeners cleaned up.");
       }
     };
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
   // Speak text using Web Speech API
   function speakText(text) {
@@ -86,12 +115,16 @@ export default function VoiceChat() {
   // Handle conversation end
   const onEnd = () => {
     setListening(false);
+    console.log("VAPI conversation ended.");
   };
 
   // Handle errors
   const onError = (error) => {
     console.error('Vapi error:', error);
     setListening(false);
+    const errorMsg = { from: 'bot', text: "An error occurred with the AI assistant. Please try again.", time: formatTime(new Date()) };
+    setMessages((msgs) => [...msgs, errorMsg]);
+    speakText(errorMsg.text);
   };
 
   // Call your backend search API and process response
@@ -117,10 +150,11 @@ export default function VoiceChat() {
       const botMsg = { from: 'bot', text: fullBotMessage, time: formatTime(new Date()) };
       setMessages((msgs) => [...msgs, botMsg]);
       speakText(fullBotMessage);
-    } catch {
+    } catch (error) {
+      console.error("Error processing query with backend:", error);
       const botMsg = {
         from: 'bot',
-        text: "Sorry, I couldn't find any of those items.",
+        text: "Sorry, I couldn't find any of those items or there was an issue connecting to the product database.",
         time: formatTime(new Date())
       };
       setMessages((msgs) => [...msgs, botMsg]);
@@ -130,10 +164,23 @@ export default function VoiceChat() {
 
   // Start voice conversation
   const toggleListening = () => {
-    if (!window.vapi || listening) return;
+    if (!window.vapi) {
+      console.warn("VAPI SDK not loaded or initialized yet. Please wait.");
+      const tempMsg = { from: 'bot', text: "AI assistant is still loading. Please wait a moment and try again.", time: formatTime(new Date()) };
+      setMessages((msgs) => [...msgs, tempMsg]);
+      speakText(tempMsg.text);
+      return;
+    }
 
-    setListening(true);
-    window.vapi.startConversation({ agentId: AGENT_ID });
+    if (listening) {
+      window.vapi.stopConversation(); // Assuming VAPI has a stop method
+      setListening(false);
+      console.log("Stopping VAPI conversation.");
+    } else {
+      setListening(true);
+      window.vapi.startConversation({ agentId: AGENT_ID });
+      console.log("Starting VAPI conversation.");
+    }
   };
 
   return (

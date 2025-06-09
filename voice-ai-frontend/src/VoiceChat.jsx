@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const userAvatar = '';
+const userAvatar = ''; // Add user avatar URL if any
 const botAvatar = 'https://cdn-icons-png.flaticon.com/512/4712/4712027.png';
-const BACKEND_URL = 'https://voicerecbackend-production.up.railway.app'; // your backend
 
 function formatTime(date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -16,32 +15,10 @@ export default function VoiceChat() {
   const [messages, setMessages] = useState([]);
   const [listening, setListening] = useState(false);
   const chatEndRef = useRef(null);
-  const vapiRef = useRef(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  useEffect(() => {
-    if (window.vapi) {
-      const vapi = new window.vapi.WebVoiceSDK({
-        apiKey: 'd8291446-ef94-430e-9fca-d97ea0b656c4',
-      });
-
-      vapiRef.current = vapi;
-
-      vapi.on('speech', async (msg) => {
-        if (!msg.transcript || !msg.isFinal) return;
-
-        const query = msg.transcript;
-        handleUserQuery(query);
-      });
-
-      vapi.on('end', () => {
-        setListening(false);
-      });
-    }
-  }, []);
 
   function speakText(text) {
     if ('speechSynthesis' in window) {
@@ -51,12 +28,13 @@ export default function VoiceChat() {
     }
   }
 
-  async function handleUserQuery(userQuery) {
+  const processQuery = async (userQuery) => {
     const userMsg = { from: 'user', text: userQuery, time: formatTime(new Date()) };
     setMessages((msgs) => [...msgs, userMsg]);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/search?q=${encodeURIComponent(userQuery)}`);
+      // Change backend URL here
+      const response = await fetch(`https://voicerecbackend-production.up.railway.app/search?q=${encodeURIComponent(userQuery)}`);
       const result = await response.json();
 
       if (!response.ok || !result.items || result.items.length === 0) {
@@ -69,8 +47,10 @@ export default function VoiceChat() {
       ).join('\n\n');
 
       const fullBotMessage = `For your requirements (${itemNames}), here are the item details:\n\n${itemDetails}`;
+
       const botMsg = { from: 'bot', text: fullBotMessage, time: formatTime(new Date()) };
       setMessages((msgs) => [...msgs, botMsg]);
+
       speakText(fullBotMessage);
     } catch {
       const botMsg = {
@@ -79,14 +59,52 @@ export default function VoiceChat() {
         time: formatTime(new Date())
       };
       setMessages((msgs) => [...msgs, botMsg]);
+
       speakText("Sorry, I couldn't find any of those items.");
     }
-  }
+  };
 
-  const startListening = () => {
-    if (listening || !vapiRef.current) return;
+  const toggleListening = () => {
+    if (listening) return;
     setListening(true);
-    vapiRef.current.start();
+
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+
+    let fullTranscript = '';
+
+    recognition.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript.trim();
+
+        if (event.results[i].isFinal) {
+          fullTranscript += transcript + ' ';
+
+          if (transcript.toLowerCase().includes('over')) {
+            fullTranscript = fullTranscript.replace(/over/gi, '').trim();
+            recognition.stop();
+            break;
+          }
+        }
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setListening(false);
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+      const trimmedTranscript = fullTranscript.trim();
+      if (trimmedTranscript.length > 0) {
+        processQuery(trimmedTranscript);
+      }
+    };
+
+    recognition.start();
   };
 
   return (
@@ -111,7 +129,7 @@ export default function VoiceChat() {
 
         <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)' }}>
           <button
-            onClick={startListening}
+            onClick={toggleListening}
             disabled={listening}
             style={{
               background: listening

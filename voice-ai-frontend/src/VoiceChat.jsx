@@ -1,13 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Vapi from '@vapi-ai/web'; // ← new import
+import Vapi from '@vapi-ai/web';
 
-const userAvatar = ''; // Optional user avatar URL
+const userAvatar = ''; 
 const botAvatar = 'https://cdn-icons-png.flaticon.com/512/4712/4712027.png';
 
 const VAPI_API_KEY = '34f5fbca-0559-4d31-95a8-4f06ed995b57';
 const AGENT_ID = 'd17442ad-a6d9-4628-9dba-49ff9ee0e43b';
 
-const vapi = new Vapi({ apiKey: VAPI_API_KEY }); // ← initialize once
+const vapi = new Vapi({ apiKey: VAPI_API_KEY });
+
+// ✅ Override VAPI web call to go through backend proxy (fixes CORS)
+vapi.callController.createWebCall = async (body) => {
+  const response = await fetch('https://voicerecbackend-production.up.railway.app/proxy/vapi', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Proxy error: ${response.status}`);
+  }
+
+  return await response.json();
+};
 
 function formatTime(date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

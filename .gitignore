@@ -1,0 +1,28 @@
+# node_modules
+node_modules/
+
+# build output
+dist/
+build/
+
+# local env files
+.env
+.env.local
+.env.development
+.env.production
+
+# Vercel output (if any local dev cache)
+.vercel
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE/editor files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -1,5 +1,5 @@
 import React from 'react';
-import VoiceChat from './VoiceChat';
+import VoiceChat from './VoiceAssistant';
 
 export default function App() {
   return (

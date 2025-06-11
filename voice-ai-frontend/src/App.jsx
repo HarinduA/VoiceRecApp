@@ -1,10 +1,12 @@
 import React from 'react';
-import VoiceChat from './VoiceAssistant';
+import VoiceAssistant from './VoiceAssistant';
 
-export default function App() {
+function App() {
   return (
-    <div className="app">
-      <VoiceChat />
+    <div>
+      <VoiceAssistant />
     </div>
   );
 }
+
+export default App;
